@@ -1,0 +1,39 @@
+# All numbers here are ASSUMPTIONS (configurable), not AICTE rules.
+sla_days: {high: 2, medium: 5, low: 7, info: 10}
+expiry_warning_days: 60
+tamper_threshold: 0.136        # image score; chosen on VALIDATION for FPR ~5%: seed-7 val split regenerated (n=300: 139 clean,
+                               # 161 tampered), FPR 7/139 = 5.0%, TPR 158/161 = 98.1% (measured, WK15, Kaggle weights epoch 10)
+tamper_mode: single              # WK22: single (model 1) | ensemble (mean of model 1 + model 2 heatmaps). Ensemble stays OFF until
+tamper_weights_2: data/models/model2_tamper_unet.pt   # tools/ensemble_eval.py shows it beats model 1 on ood_layout and loses <= 0.02 AUC
+tamper_threshold_ensemble: null  # elsewhere; its threshold is then chosen on VALIDATION at the same 5% false-alarm target (designed)
+# WK22-B DECISION (measured, eval/results_ensemble.csv, seed-7 sets n=300): KEEP model 1. Ensemble val threshold 0.0952
+# (FPR 7/139); it beat model 1 on ood_layout (AUC 0.651 vs 0.625) but fell 0.032 below on classical_inpaint (0.472 vs 0.504).
+name_match_threshold: 0.85     # name similarity below this = mismatch
+photo_max_km: 1.0              # photo GPS farther than this from declared location = flag
+blur_threshold: 60.0           # variance of Laplacian below this = blurry (tune on demo photos)
+# F10 inspection priority: designed weights, ASSUMPTION, not trained. Per finding by severity; flags added once; capped at 1.0.
+priority_weights: {high: 0.25, medium: 0.1, low: 0.03, suspected_anomaly: 0.2, old_building: 0.1, old_building_years: 30,
+                   noc_intake_above_approved: 0.15}
+# MOCK asynchronous issuer webhook (pramaan/issuer_async.py). DEMO secret, NOT a real credential: replace via a secret store in production.
+issuer_webhook_secret: "DEMO-ONLY-pramaan-issuer-webhook-secret-not-for-production"
+# Retention (tools/retention.py): output files, heatmaps and uploaded-document copies older than this are deleted.
+retention_days: 30             # ASSUMPTION (no AICTE retention period found yet); audit.db is NEVER deleted
+# WK23-5 trust score 0-100 = 100 minus deductions (DESIGNED weights, ASSUMPTION; not a probability). A finding deducts
+# its severity weight x its confidence; a verification result deducts by status.
+trust_weights: {high: 40, medium: 20, low: 8, info: 0, mismatch_detected: 30, expired: 30, verification_pending: 5,
+                source_unavailable: 5, manual_review_required: 10}
+# WK23-7 year-over-year compare (ASSUMPTION thresholds): intake up >= intake_up_pct while built-up area up < area_up_min_pct
+yoy: {intake_up_pct: 25, area_up_min_pct: 5, name_similarity: 0.85, address_similarity: 0.7}
+# WK23-8 serial reuse across institutes (DESIGNED rule, ASSUMPTION values, fixed before looking at the demo results):
+# masked body text >= text_min AND same issuer AND issue dates <= days apart AND certificate numbers <= number_gap apart
+serial: {text_min: 0.95, days: 30, number_gap: 20, doc_types: [structural_cert, fire_cert, occupancy_cert]}
+# WK23-10 expiry reminders: days before expiry (ASSUMPTION). Reminders go to the MOCK outbox data/outbox/ (no real email/SMS).
+reminder_days: [60, 30, 7]
+# WK23-12 workload assignment: officer SLA in days from assignment, by lane (ASSUMPTION)
+assignment_sla_days: {human_review: 5, return_for_rectification: 3, clear: 2, info: 7}
+# WK23-18 geo check: declared location vs MOCK geocoder of the declared address (ASSUMPTION threshold)
+geo_max_km: 2.0
+# WK25-24 rule administration: local copy of the Approval Process Handbook used for word-for-word clause checks (not committed)
+handbook_pdf: data/handbook/APH.pdf
+academic_year_shown: {}   # WK27 A5, reverted: empty = the application year as filed (2027-28 for the synthetic set), so the case header, letter subject and F. No. match the documents; the previous Extension of Approval letter stays 2026-27 (supporting document). A mapping {"filed": "shown"} here changes the display only (api/ctx.py)
+false_alarm_min_marks: 20      # WK27 E2: the "marked false alarm" share is shown only after this many officer marks (designed)
